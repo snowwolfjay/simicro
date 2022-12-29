@@ -1,5 +1,5 @@
 import { Observable } from "rxjs";
-import { DataFetcher } from "./ServerClientSafeData";
+import { DataFetcher } from "./ServiceClientSafeData";
 import { ServiceClientProviderDDP } from "./ServiceClientProviderDDP";
 
 export class ServiceClient {
