@@ -1,0 +1,94 @@
+type Validator<T = any> = (k: T) => boolean | string | void | undefined;
+type SimpleFetcher<T> = (key?: string, validator?: Validator<T>) => T;
+
+export type DataFetcher = {
+  str: SimpleFetcher<string>;
+  obj: SimpleFetcher<any>;
+  num: SimpleFetcher<number>;
+  exist: SimpleFetcher<any>;
+  arr: <T = any>(key?: string, validator?: Validator<T[]>) => T[];
+};
+export const createDataFetcher = (
+  source: any,
+  response: { error: (...args: any[]) => void } = {
+    error(...args) {
+      throw new Error(...args);
+    },
+  }
+): DataFetcher => {
+  let _str: SimpleFetcher<string>;
+  let _obj: SimpleFetcher<any>;
+  let _exist: any;
+  const useValidator = <T = any>(
+    key: string,
+    val: T,
+    validator?: Validator<T>
+  ) => {
+    if (typeof validator !== "function") {
+      return val;
+    }
+    const result = validator(val);
+    if (result === false) {
+      response.error(400, `${key} is not a valid `);
+    } else if (typeof result === "string") {
+      response.error(400, `${key} is not a valid : ${result} `);
+    }
+    return val;
+  };
+  return {
+    get str() {
+      if (!_str) {
+        _str = (key, validator) => {
+          const val = key ? source?.[key] : source;
+          if (typeof val !== "string") {
+            response.error(400, `${key} is not a string`);
+            return;
+          }
+          return useValidator(key, val, validator);
+        };
+      }
+      return _str;
+    },
+    get obj() {
+      if (!_obj) {
+        _obj = (key, validator) => {
+          const val = key ? source?.[key] : source;
+          if (typeof val !== "object" || !val) {
+            response.error(400, `${key} is not a object`);
+            return;
+          }
+          return useValidator(key, val, validator);
+        };
+      }
+      return _obj;
+    },
+    exist(key, validator) {
+      const val = key ? source?.[key] : source;
+      if (
+        val === undefined ||
+        val === null ||
+        Number.isNaN(val) ||
+        val === ""
+      ) {
+        response.error(400, `${key} is not exist`);
+        return;
+      }
+      return useValidator(key, val, validator);
+    },
+    num(key, validator) {
+      const val = Number(key ? source?.[key] : source);
+      if (typeof val !== "number" || Number.isNaN(val)) {
+        response.error(400, `${key} is not a number`);
+        return;
+      }
+      return useValidator(key, val, validator);
+    },
+    arr(key, validator) {
+      const val = key ? source?.[key] : source;
+      if (Array.isArray(val)) {
+        return useValidator(key, val, validator);
+      }
+      response.error(400, `${key} is not a array`);
+    },
+  };
+};
